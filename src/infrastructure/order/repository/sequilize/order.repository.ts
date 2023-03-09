@@ -26,31 +26,43 @@ export default class OrderRepository implements OrderRepositoryInterface {
   }
 
   async update(entity: Order): Promise<void> {
-    await OrderModel.update(
-      {
-        customer_id: entity.customerId,
-        total: entity.total(),
-        items: entity.items.map((item) => ({
+    await entity.items.map((item) => (
+      OrderItemModel.update(
+        {
           id: item.id,
           name: item.name,
           price: item.price,
           product_id: item.productId,
           quantity: item.quantity,
-        })),
+        }, 
+        {
+          where: {
+            id: item.id
+          }
+        }
+        )));
+        
+    await OrderModel.update(
+      {
+        customer_id: entity.customerId,
+        total: entity.total()
       },
       {
-        where: {
-          id: entity.id,
+        where: { 
+          id: entity.id, 
         },
       }
     );
   }
 
   async find(id: string): Promise<Order> {
-    const orderModel = await OrderModel.findOne({ where: { id } });
+    const orderModel = await OrderModel.findOne({
+      where: { id: id },
+      include: ["items"],
+    });
     return new Order(
-      orderModel.id, 
-      orderModel.customer_id,       
+      orderModel.id,
+      orderModel.customer_id,
       orderModel.items.map(
         (item) =>
         (new OrderItem(
@@ -65,11 +77,11 @@ export default class OrderRepository implements OrderRepositoryInterface {
   }
 
   async findAll(): Promise<Order[]> {
-    const orderModels = await OrderModel.findAll();
+    const orderModels = await OrderModel.findAll({include: ["items"]});
     return orderModels.map((orderModel) =>
       new Order(
-        orderModel.id, 
-        orderModel.customer_id, 
+        orderModel.id,
+        orderModel.customer_id,
         orderModel.items.map(
           (item) =>
           (new OrderItem(
